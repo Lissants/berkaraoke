@@ -54,8 +54,7 @@ python run local-server.py
 
 ### This project was made to comply with the requirement of graduation from both Information Systems program from Sampoerna University and Applied Computing program from The University of Arizona
 
-### This project is the application of the Senior Capstone paper "Enhancing Online Karaoke Experiences through Modified
-Performance-Based Recommendations"
+### This project is the application of the Senior Capstone paper "Enhancing Online Karaoke Experiences through Modified Performance-Based Recommendations"
 
 ## Developed by: Christopher Gerard Lissants<br/>
 2021400012 (Sampoerna University)<br/>
