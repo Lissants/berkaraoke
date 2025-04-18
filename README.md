@@ -1,4 +1,11 @@
 # Berkaraoke
+Start the Expo server with this command:
+```npx expo start```
+
+Start the Flask server with this command:
+```cd local-runner```
+```python run local-server.py```
+
 This project was made to comply with the requirement of graduation from both Information Systems program from Sampoerna University and Applied Computing program from The University of Arizona
 
 This project is the application of the Senior Capstone paper "Enhancing Online Karaoke Experiences through Modified
