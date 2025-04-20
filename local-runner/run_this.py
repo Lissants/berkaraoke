@@ -22,12 +22,12 @@ class ResponseMock:
 if __name__ == "__main__":
     # Flat structure - no nested "body"
     test_event = {
-    "documentIds": ["68022625001f8a444d4d"],  # Your actual document ID
-    "masterDocumentId": "68022625001f8a444d4d",  # Same if no master doc
-    "documentId": "68022625001f8a444d4d",  # Must match existing doc
-    "userId": "67d06f1d001c5d0eaf42",  # Full user ID
-    "fileIds": ["6802262400024023ba8f"],  # Your actual file ID
-    "genreFilter": "pop",
+    "documentIds": ["680330680039f415b5d0"],  # Your actual document ID
+    "masterDocumentId": "680330680039f415b5d0",  # Same if no master doc
+    "documentId": "680330680039f415b5d0",  # Must match existing doc
+    "userId": "67e3b3e7001038db86c2",  # Full user ID
+    "fileIds": ["68032f9100355cc72876"],  # Your actual file ID
+    "genreFilter": "all",
     "artistFilter": "all"
     }
     

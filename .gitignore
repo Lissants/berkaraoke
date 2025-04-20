@@ -9,12 +9,15 @@ local-runner/temp_audio/
 local-runner/backup-main.py
 local-runner/Dockerfile
 local-runner/endpoints.env
+local-runner/processing_request.json
+local-runner/processor.log
 
 # Unimportant Things
 Test2.m4a
 template.yaml
 lambda_function.py
 requirements.txt
+karaoke-recommender/
 
 # Expo
 .expo/

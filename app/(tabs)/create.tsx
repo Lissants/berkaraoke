@@ -313,63 +313,39 @@ const create = () => {
   const triggerPythonProcessing = async (fileId: string, docId: string) => {
     try {
       const currentUser = await getCurrentUser();
-      if (!currentUser) {
-        throw new Error('User not logged in');
+      if (!currentUser) throw new Error('User not logged in');
+  
+      // 1. Verify server connection
+      const healthCheck = await fetch(`${LOCAL_SERVER_URL}/`);
+      if (!healthCheck.ok) throw new Error('Server not ready');
+      
+      // 2. Start processing
+      const response = await fetch(`${LOCAL_SERVER_URL}/process`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fileIds: [fileId],
+          documentId: docId,
+          userId: currentUser.$id,
+          genreFilter: selectedGenre,
+          artistFilter: selectedArtist
+        })
+      });
+  
+      const result = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(result.error || 'Processing failed');
       }
-
-    // Update the document status to 'processing'
-    await databases.updateDocument(
-      config.databaseId,
-      config.userKaraokeTrackCollectionId,
-      docId,
-      {
-        processingStatus: 'processing'
-      }
-    );
-
-    // Call your local Python server
-    const response = await fetch(`${LOCAL_SERVER_URL}/process`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        fileIds: [fileId],
-        documentId: docId,
-        userId: currentUser.$id,
-        genreFilter: selectedGenre,
-        artistFilter: selectedArtist
-      })
-    });
-
-    const result = await response.json();
-    
-    if (!response.ok) {
-      throw new Error(result.error || 'Processing failed');
-    }
-
-    return result;
+  
+      return result;
+      
     } catch (error) {
-      console.error('Processing trigger failed:', error);
-      
-      // Update document status to 'failed' if processing doesn't start
-      try {
-        await databases.updateDocument(
-          config.databaseId,
-          config.userKaraokeTrackCollectionId,
-          docId,
-          {
-            processingStatus: 'failed',
-            error: error.message
-          }
-        );
-      } catch (updateError) {
-        console.error('Failed to update document status:', updateError);
-      }
-      
+      console.error('Processing error:', error);
+      // Update UI state to show error
       throw error;
     }
-  }
+  };
 
   const saveRecording = async () => {
     setIsUploading(true);

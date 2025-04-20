@@ -13,6 +13,7 @@ from dotenv import load_dotenv
 from appwrite.query import Query
 import datetime
 from crepe import predict as crepe_predict
+import tempfile
 
 # Load environment variables early
 load_dotenv('endpoints.env')
@@ -84,7 +85,7 @@ def download_and_process_audio(storage, file_id):
             raise Exception("Audio conversion failed")
             
         sr, audio = wavfile.read(output_path)
-        time, frequency, confidence, _ = crepe_predict(audio, sr, model_capacity='tiny', viterbi=True)
+        time, frequency, confidence, _ = crepe_predict(audio, sr, model_capacity='medium', viterbi=True)
         
         # Clean up
         os.remove(input_path)
@@ -176,126 +177,110 @@ def generate_recommendations(tracks, performance):
     
     return sorted(recommendations, key=lambda x: x['similarity'], reverse=True)[:5]
 
-def main(context):
-    document_id = master_doc_id = None
+def main(data: dict):
+    """Redesigned main function to work with direct dictionary input"""
+    document_id = data['documentId']
+    file_ids = data['fileIds']
+    user_id = data['userId']
     
     try:
         # Initialize Appwrite client
         client = Client()
         client.set_endpoint(os.getenv('APPWRITE_ENDPOINT'))
-        client.set_project(os.getenv('APPWRITE_PROJECT_ID')) 
+        client.set_project(os.getenv('APPWRITE_PROJECT_ID'))
         client.set_key(os.getenv('APPWRITE_API_KEY'))
         
         databases = Databases(client)
         storage = Storage(client)
 
-        # Parse request
-        data = json.loads(context.req.body)
-        document_id = data['documentId']
-        master_doc_id = data.get('masterDocumentId', document_id)
-        document_ids = data.get('documentIds', [document_id])
-        file_ids = data.get('fileIds', [])
-        
-        # Verify document exists
-        doc = databases.get_document(
-            os.getenv('APPWRITE_DB_ID'),
-            os.getenv('APPWRITE_USER_TRACKS_COLLECTION_ID'),
-            document_id
-        )
-        
-        # Update status
+        # Update status to processing
         databases.update_document(
             os.getenv('APPWRITE_DB_ID'),
             os.getenv('APPWRITE_USER_TRACKS_COLLECTION_ID'),
             document_id,
             {'processingStatus': 'processing'}
         )
+
+        # Process audio and get performance data
+        combined_performance, processed_files = process_recordings(
+            databases, 
+            storage, 
+            [document_id]  # Pass as list
+        )
+
+        # Get recommendations based on filters
+        queries = []
+        if data.get('genreFilter', 'all') != 'all':
+            queries.append(Query.equal('genre', data['genreFilter']))
+        if data.get('artistFilter', 'all') != 'all':
+            queries.append(Query.equal('artist', data['artistFilter']))
         
-        # Process audio
-        combined_performance, processed_files = process_recordings(databases, storage, document_ids)
-        
-        # Process standalone files
-        for file_id in file_ids:
-            try:
-                time, frequency, confidence = download_and_process_audio(storage, file_id)
-                performance = calculate_performance(frequency, confidence)
-                for note, score in performance.items():
-                    combined_performance[note] = (combined_performance.get(note, 0) + score) / 2
-                processed_files.append(file_id)
-            except Exception as e:
-                print(f"Error processing {file_id}: {str(e)}")
-        
-        # Get recommendations
-        queries = [
-            q for q in [
-                Query.equal('genre', data['genreFilter']) if data.get('genreFilter') != 'all' else None,
-                Query.equal('artist', data['artistFilter']) if data.get('artistFilter') != 'all' else None
-            ] if q
-        ]
-        
-        karaoke_tracks = databases.list_documents(
+        tracks = databases.list_documents(
             os.getenv('APPWRITE_DB_ID'),
             os.getenv('APPWRITE_KARAOKE_COLLECTION_ID'),
             queries=queries
         ).get('documents', [])
-        
-        top_recommendations = generate_recommendations(karaoke_tracks, combined_performance)
-        
-        # Save results
+
+        recommendations = generate_recommendations(tracks, combined_performance)
+
+        # Prepare performance data in the exact required format
+        performance_data = {
+            "strongNotes": dict(sorted(combined_performance.items(), key=lambda x: x[1], reverse=True)[:5]),
+            "weakNotes": dict(sorted(combined_performance.items(), key=lambda x: x[1])[:5]),
+            "overallAccuracy": float(np.mean(list(combined_performance.values())))
+        }
+
+        # Prepare recommendations as a single JSON string in an array
+        recommendation_data = [{
+            'id': r['id'],
+            'songName': r['songName'],
+            'artist': r['artist'],
+            'similarity': r['similarity'],
+            'genre': r['genre']
+        } for r in recommendations]
+
+        # Prepare the complete result object
         result = {
             'processingStatus': 'completed',
-            'recommendations': [json.dumps(top_recommendations)],
-            'performanceData': [json.dumps({
-                'strongNotes': dict(sorted(combined_performance.items(), key=lambda x: x[1], reverse=True)[:5]),
-                'weakNotes': dict(sorted(combined_performance.items(), key=lambda x: x[1])[:5]),
-                'overallAccuracy': np.mean(list(combined_performance.values())) if combined_performance else 0
-            })],
-            'crepeAnalysis': f"Processed {len(processed_files)} recordings",
-            'accuracyScore': int((np.mean(list(combined_performance.values())) * 100) if combined_performance else 0),
+            'recommendations': [json.dumps(recommendation_data)],  # Single JSON string in array
+            'performanceData': [json.dumps(performance_data)],  # Single JSON string in array
+            'crepeAnalysis': json.dumps({
+                'totalNotes': len(combined_performance),
+                'noteDistribution': performance_data['strongNotes'],
+                'frequencyRange': {
+                    'lowest': min(combined_performance.items(), key=lambda x: x[1]),
+                    'highest': max(combined_performance.items(), key=lambda x: x[1])
+                }
+            }),
             'processedAt': datetime.datetime.now().isoformat(),
-            'childDocuments': document_ids
+            'accuracyScore': int(performance_data['overallAccuracy'] * 100),
+            'genreFilter': data.get('genreFilter', 'all'),
+            'artistFilter': data.get('artistFilter', 'all'),
+            'fileIds': file_ids,
+            'fileId': file_ids[0] if file_ids else '',
+            'isMasterDocument': data.get('isMasterDocument', False),
+            'childDocuments': data.get('childDocuments', [])
         }
-        
+
+        # Update document with results
         databases.update_document(
             os.getenv('APPWRITE_DB_ID'),
             os.getenv('APPWRITE_USER_TRACKS_COLLECTION_ID'),
-            master_doc_id,
+            document_id,
             result
         )
-        
-        return context.res.json({
-            'success': True,
-            'message': 'Processing completed',
-            'processedFiles': processed_files,
-            'masterDocumentId': master_doc_id
-        })
-        
+
     except Exception as e:
-        error_data = {
-            'processingStatus': 'failed',
-            'error': str(e),
-            'failedAt': datetime.datetime.now().isoformat()
-        }
-        
-        try:
-            if document_id:
-                databases.update_document(
-                    os.getenv('APPWRITE_DB_ID'),
-                    os.getenv('APPWRITE_USER_TRACKS_COLLECTION_ID'),
-                    document_id,
-                    error_data
-                )
-            if master_doc_id and master_doc_id != document_id:
-                databases.update_document(
-                    os.getenv('APPWRITE_DB_ID'),
-                    os.getenv('APPWRITE_USER_TRACKS_COLLECTION_ID'),
-                    master_doc_id,
-                    error_data
-                )
-        except Exception as update_err:
-            print(f"Failed to update error status: {str(update_err)}")
-        
-        return context.res.json({
-            'success': False,
-            'error': str(e)
-        }, 500)
+        print(f"Processing failed: {str(e)}")
+        # Update document with error
+        databases.update_document(
+            os.getenv('APPWRITE_DB_ID'),
+            os.getenv('APPWRITE_USER_TRACKS_COLLECTION_ID'),
+            document_id,
+            {
+                'processingStatus': 'failed',
+                'error': str(e)[:250],  # Truncate long errors
+                'failedAt': datetime.datetime.now().isoformat()
+            }
+        )
+        raise

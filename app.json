@@ -1,10 +1,10 @@
 {
   "expo": {
-    "name": "berkaraoke",
+    "name": "Berkaraoke",
     "slug": "berkaraoke",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/logo-small.png",
     "scheme": "berkaraoke",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
@@ -14,7 +14,8 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#ffffff",
+        "permissions": ["android.permission.INTERNET"]
       },
       "package": "com.anonymous.berkaraoke"
     },
@@ -37,6 +38,14 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "649436a8-f1e5-432e-973f-130c2cb382bb"
+      }
     }
   }
 }
