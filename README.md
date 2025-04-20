@@ -1,50 +1,63 @@
-# Welcome to your Expo app 👋
-
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
-
-## Get started
-
-1. Install dependencies
-
-   ```bash
-   npm install
-   ```
-
-2. Start the app
-
-   ```bash
-    npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
-
-```bash
-npm run reset-project
+# Berkaraoke
+## In order to get this project working in your environment/machine:
+1. Create an Appwrite project
+2. Inside the Appwrite project, create a Storage bucket, 3 collections, namely: karaokeTrack, userKaraokeTrack and users
+3. Set the attributes of users collection as such:
+   - username Required String
+   - email Required email
+   - avatar Url
+   - accountId Required String
+5. Set the attributes of karaokeTrack collection as such:
+   - songName Required String
+   - artist Required String
+   - audio Required Url
+   - genre Required String
+   - notesBinary String[]
+   - noteOccurences String[]
+6. Set the attribute of userKaraokeTrack as such:
+   - users Relationship with users
+   - processingStatus Required Enum elements: "pending", "processing", "completed", "failed"
+   - recommendations String[]
+   - performanceData String[]
+   - crepeAnalysis String
+   - processedAt Datetime
+   - recordingDate Datetime
+   - accuracyScore Integer
+   - genreFilter String
+   - artistFilter String
+   - fileIds String[]
+   - fileId String
+   - isMasterDocument Boolean
+   - childDocuments String[]
+7. Create an API key in Appwrite with scopes: Auth, Database, Storage, Other checked
+8. Copy the current Project ID, Database ID, Storage ID, karaokeTrack collectionID, userKaraokeTrack collection ID, users collection ID and the API key that has been created
+9. Create a file named endpoints.env in /local-runner/ and paste this template
+```
+   APPWRITE_ENDPOINT=https://cloud.appwrite.io/v1
+    APPWRITE_PROJECT_ID=your Appwrite Project ID
+    APPWRITE_API_KEY=your Appwrite API Key
+    APPWRITE_DB_ID=your Appwrite Database ID
+    APPWRITE_STORAGE_ID=your Appwrite Storage ID
+    APPWRITE_KARAOKE_COLLECTION_ID=your Appwrite karaokeTrack collection ID
+    APPWRITE_USER_TRACKS_COLLECTION_ID=your Appwrite userKaraokeTrack collection ID
+```
+11. Start the Expo server with this command:
+```
+npx expo start
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+13. Start the Flask server with this command:
+```
+cd local-runner
+python run local-server.py
+```
 
-## Learn more
+### This project was made to comply with the requirement of graduation from both Information Systems program from Sampoerna University and Applied Computing program from The University of Arizona
 
-To learn more about developing your project with Expo, look at the following resources:
+### This project is the application of the Senior Capstone paper "Enhancing Online Karaoke Experiences through Modified Performance-Based Recommendations"
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+## Developed by: Christopher Gerard Lissants<br/>
+2021400012 (Sampoerna University)<br/>
+23792093 (The University of Arizona)
 
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+### This mobile application focuses on providing song recommendation system for karaoke singers based on their singing performance and song preferences.
